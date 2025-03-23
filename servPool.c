@@ -92,11 +92,11 @@ int main(int argc, char **argv)
     int listenfd, port;
     socklen_t clientlen;
     struct sockaddr_in clientaddr;
-    if (argc != 2) {
+    /*if (argc != 2) {
         fprintf(stderr, "usage: %s <port>\n", argv[0]);
         exit(0);
-    }
-    port = atoi(argv[1]);
+    }*/
+    port = 2121;    //atoi(argv[1]);
     
     clientlen = (socklen_t)sizeof(clientaddr);
 
