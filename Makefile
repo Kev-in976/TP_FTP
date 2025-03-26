@@ -1,35 +1,47 @@
-.PHONY: all, clean
+.PHONY: all clean
 
-# Disable implicit rules
+# Désactiver les règles implicites
 .SUFFIXES:
 
-# Keep intermediate files
-#.PRECIOUS: %.o
-
+# Compilateur et options
 CC = gcc
 CFLAGS = -Wall -Werror
 LDFLAGS =
 
-# Note: -lnsl does not seem to work on Mac OS but will
-# probably be necessary on Solaris for linking network-related functions 
-#LIBS += -lsocket -lnsl -lrt
+# Répertoires
+CLIENT_DIR = Client
+SERVEUR_DIR = Serveur
+
+# Librairies nécessaires
 LIBS += -lpthread
 
-INCLUDE = csapp.h
-OBJS = csapp.o echo.o
-INCLDIR = -I.
+# Fichiers sources et exécutables
+CLIENT_SRC = $(wildcard $(CLIENT_DIR)/*.c)
+SERVEUR_SRC = $(wildcard $(SERVEUR_DIR)/*.c)
+CLIENT_OBJS = $(CLIENT_SRC:.c=.o)
+SERVEUR_OBJS = $(SERVEUR_SRC:.c=.o)
 
-PROGS = echoclient servPool
+CLIENT_BIN = $(CLIENT_DIR)/client
+SERVEUR_BIN = $(SERVEUR_DIR)/serveur
 
+# Compilation de tous les programmes
+all: $(CLIENT_BIN) $(SERVEUR_BIN)
 
-all: $(PROGS)
+# Compilation des fichiers objets
+$(CLIENT_DIR)/%.o: $(CLIENT_DIR)/%.c
+	$(CC) $(CFLAGS) -c -o $@ $<
 
-%.o: %.c $(INCLUDE)
-	$(CC) $(CFLAGS) $(INCLDIR) -c -o $@ $<
-	
-%: %.o $(OBJS)
-	$(CC) -o $@ $(LDFLAGS) $^ $(LIBS)
-#	$(CC) -o $@ $(LDFLAGS) $(LIBS) $^
-	
+$(SERVEUR_DIR)/%.o: $(SERVEUR_DIR)/%.c
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+# Création des exécutables
+$(CLIENT_BIN): $(CLIENT_OBJS)
+	$(CC) -o $@ $^ $(LIBS)
+
+$(SERVEUR_BIN): $(SERVEUR_OBJS)
+	$(CC) -o $@ $^ $(LIBS)
+
+# Nettoyage
 clean:
-	rm -f $(PROGS) *.o
+	rm -f $(CLIENT_DIR)/*.o  $(CLIENT_BIN) 
+	rm -f $(SERVEUR_DIR)/*.o $(SERVEUR_BIN)
