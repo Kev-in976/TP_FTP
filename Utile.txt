@@ -1,0 +1,6 @@
+Ce fichier nous servira de boite à outils histoire de nous simplifier la vie.
+
+Il faut se placer dans la racine pour faire un "make".
+Pour run : 
+    "./serveur" (dans Serveur)
+    "./client" (dans Client)
