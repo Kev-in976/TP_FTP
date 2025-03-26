@@ -1,24 +1,8 @@
 /*
  * echoclient.c - An echo client
  */
+#include "types.h"
 #include "csapp.h"
-
-typedef enum {
-    GET,
-    PUT,
-    LS
-} typereq_t;
-
-
-typedef struct request__t{
-    int requete;
-    char nomFich [256];
-}request_t;
-
-typedef struct response_t{
-    int status;
-}response_t;
-
 
 int main(int argc, char **argv)
 {
@@ -33,15 +17,20 @@ int main(int argc, char **argv)
         fprintf(stderr, "usage: %s <host> <nomFich>\n", argv[0]);
         exit(0);
     }
+
     host = argv[1];
-    port = 2121; //atoi(argv[2]);
+    port = 2121;
 
     /*
      * Note that the 'host' can be a name or an IP address.
      * If necessary, Open_clientfd will perform the name resolution
      * to obtain the IP address.
      */
-    clientfd = Open_clientfd(host, port);
+    if ((clientfd = Open_clientfd(host,port)) == -1)
+	{
+		perror("Open error\n");
+		exit(1);
+	}
     
     /*
      * At this stage, the connection is established between the client
@@ -49,30 +38,41 @@ int main(int argc, char **argv)
      * has not yet called "Accept" for this connection
      */
     printf("client connected to server OS\n"); 
-    
-    req.requete = GET;
-    strcpy(req.nomFich, argv[2]);
-    Write(clientfd, &req, sizeof(request_t));
-    printf("le code status avant read est %d\n",res.status);
-    Read(clientfd, &res, sizeof(response_t));
-    printf("le code status est %d\n",res.status);
 
-    if (res.status == 404){
-        printf("404 error, Fichier introuvable");
+	/*filling the request*/
+    strcpy(req.filename, argv[2]);
+    req.request = GET; /*on ne gère que ce type de requête so far*/
+	
+	/* sending the type of the request : GET | PUT | LS to the server */
+	/*int bufreq=2;
+	bufreq = req.request;
+    Write(clientfd, &bufreq, sizeof(req.request));*/
+
+    Write(clientfd, &(req.request), sizeof(req.request));
+    Write(clientfd, &(req.filename), sizeof(req.filename));
+	
+
+	/* fetching the response from the server */
+    Read(clientfd, &res.status, sizeof(res.status));
+
+	/*status manage*/
+    if (res.status == NOT_FOUND){
+        printf("erreur 404, fichier introuvable");
     }
-    else if (res.status == 200){
-        int fd = Open("fichier.txt", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    else if (res.status == FOUND){
+        int fd = Open("import.txt", O_WRONLY | O_CREAT | O_TRUNC, 0644);
         if (fd < 0) {
             perror("Open");
             exit(1);
         }
-
-        while( (n = Read(clientfd, buffer, sizeof(buffer))) > 0) {
-            printf("%zd octet ont été lu\n",n);
+		
+		printf("réception du fichier en cours ...\n");
+        while((n = Read(clientfd, buffer, sizeof(buffer))) > 0) {
+            printf("%zd octets ont été lu\n",n);
             Write(fd, buffer, n);
         }
+		printf("fin du transfert\n");
     }
-
 
 
     Close(clientfd);
