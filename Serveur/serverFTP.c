@@ -4,6 +4,7 @@
 
 
 #include "csapp.h"
+#include "types.h"
 
 #define MAX_NAME_LEN 256
 
@@ -14,23 +15,6 @@ int compteur = 0;   //nombre de fils en cours d'execution
 pid_t lesFils [3];
 
 void echo(int connfd);
-
-typedef enum {
-    GET,
-    PUT,
-    LS
-} typereq_t;
-
-
-typedef struct request__t{
-    int requete;
-    char nomFich [256];
-}request_t;
-//peut-etre que les types du dessus doivent uniquement être dans clientFTP
-
-typedef struct response_t{
-    int status;
-}response_t;
 
 
 /* 
@@ -69,47 +53,59 @@ void traitementReq(int connfd){
     int fd;
     char buffer[1024];
     ssize_t buff;
+	
+	/*filling the request structure*/
+    if ((n = Read(connfd, &(req.request), sizeof(req.request)))==-1){
+		perror("Read error\n");
+		exit(1);
+	}
+	
+	 
+    if ((n = Read(connfd, &(req.filename), sizeof(req.filename)))==-1){
+		perror("Read error\n");
+		exit(1);
+	}
+	printf("filename : %s\n", req.filename);
+	
+	/*request managing*/
+	switch (req.request){
+		case GET:
+			printf("Requête de type GET pour le fichier %s\n",req.filename);
 
-    if ( (n = Read(connfd, &req, sizeof(request_t))) > 0){  //On verifie qu'il n'y a pas d'erreur de lecture
-        switch (req.requete){
-            case GET:
-                printf("Requête de type GET pour le fichier %s\n",req.nomFich);
-                //fd = Open(req.nomFich, O_RDONLY, 0444);
+			if ((fd = Open(req.filename, O_RDONLY, 0444)) == -1){
+				perror("fichier introuvable");
+				res.status = 404;
+				Write(connfd, &(res.status), sizeof(res.status));    //envoi de l'erreur au client
+			}
 
-                if ( (fd = Open(req.nomFich, O_RDONLY, 0444)) == -1){
-                    perror("fichier introuvable");
-                    res.status = 404;
-                    Write(connfd, &res, sizeof(response_t));    //envoi de la reponse au client
-                    return;
-                }
+			else 
+			/*the file exists, so we proceed to the transfer*/
+			{
+				res.status = 200;
+				Write(connfd, &(res.status), sizeof(res.status));    //envoi de l'erreur au client
+				printf("Début du transfert du fichier %s...\n", req.filename);
+				while((buff = Read(fd,buffer, sizeof(buffer)))>0){     //on check l'etat de read, si >0 on continue
+					printf("Transfert en cours, %zd octets lu\n", buff);
+					Write(connfd, buffer, sizeof(buffer));
+				}
+				printf("Ficher transfere avec succès\n");
+			}
+			close(fd);
+			break;
 
-                res.status = 200;
-                printf("Envoi du status : %d\n", res.status);
-                printf("Fichier %s trouvé.\n", req.nomFich);
-                Write(connfd, &res, sizeof(response_t));    //envoi de la reponse au client
+		case PUT:
+			printf("Requête de type PUT pour le fichier %s",req.filename);
+			break;
 
-                /*copie du fichier à envoyer en memoire*/
-
-                 while( (buff = Read(fd,buffer, sizeof(buffer))) > 0 ){     //on check l'etat de read, si >0 on continue
-                    Write(connfd, buffer, sizeof(buffer));
-                 }
-                 close(fd);
-                break;
-
-            case PUT:
-                printf("Requête de type PUT pour le fichier %s",req.nomFich);
-                break;
-
-            case LS:
-                printf("Requête de type LS pour le fichier %s",req.nomFich);
-                break;
-            
-            default:
-                fprintf(stderr,"requete non reconnu\n");
-                break;
-        }
-    }    
-}
+		case LS:
+			printf("Requête de type LS pour le fichier %s",req.filename);
+			break;
+		
+		default:
+			fprintf(stderr,"requete non reconnu\n");
+			break;
+	}
+}    
 
 void child_work(int listenfd, socklen_t clientlen, struct sockaddr_in clientaddr) {
     int connfd;
