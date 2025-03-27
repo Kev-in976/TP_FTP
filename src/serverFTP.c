@@ -14,8 +14,6 @@ int compteur = 0;   //nombre de fils en cours d'execution
 
 pid_t lesFils [3];
 
-void echo(int connfd);
-
 
 /* 
  * Note that this code only works with IPv4 addresses
@@ -50,7 +48,7 @@ void traitementReq(int connfd){
     response_t res;
     ssize_t n;
     int fd;
-    char *buffer; /*size will determined later*/
+    char buffer [4096]; /*size will determined later*/
     ssize_t buff;
 	
 	/*filling the request structure*/
@@ -92,14 +90,20 @@ void traitementReq(int connfd){
 				int sizefd = ftell(f); // get current file pointer
 				fseek(f, 0, SEEK_SET); // seek back to beginning of file
 				fclose(f);
-				/*found on stackoverflow*/
-				buffer = malloc(sizefd*sizeof(char));
-				while((buff = Rio_readn(fd,buffer, sizefd*sizeof(char)))>0){     //on check l'etat de read, si >0 on continue
+                int nb =1;
+                printf("size = %d\n",sizefd);
+				if (sizefd > sizeof(buffer)){
+                    nb = (sizefd/sizeof(buffer)) + 1;
+                }
+                res.status = 100;
+                Rio_writen(connfd, &(res.status), sizeof(res.status));
+
+                printf("le fichier sera envoyé en %d paquets\n",nb);
+				while((buff = Rio_readn(fd,buffer, sizeof(buffer)))>0){     //on check l'etat de read, si >0 on continue
 					printf("Transfert en cours, %zd octets lu\n", buff);
 					Rio_writen(connfd, buffer, buff);
 				}
 				printf("Ficher transfere avec succès\n");
-				free(buffer);
 			}
 			close(fd);
 			break;

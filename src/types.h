@@ -12,7 +12,8 @@ typedef struct request_t{
 
 typedef enum {
 	NOT_FOUND = 404,
-	FOUND = 200
+	FOUND = 200,
+    SENDING = 100
 } status_t;
 
 typedef struct response_t{

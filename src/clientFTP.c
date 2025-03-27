@@ -11,7 +11,7 @@ int main(int argc, char **argv)
     char host[10];
     request_t req;
     response_t res;
-    char buffer [1024];
+    char buffer [4096];
     int n;
 
     if (argc != 2) {
@@ -70,10 +70,17 @@ int main(int argc, char **argv)
         }
 		
 		printf("réception du fichier en cours ...\n");
-        while((n = Rio_readn(clientfd, buffer, sizeof(buffer)))>0) {
-            printf("%d octets ont été lu\n",n);
-            Rio_writen(fd, buffer, n);
-        }
+        int i = 0;
+        Read(clientfd, &res.status, sizeof(res.status));
+        printf("status = %d\n",res.status);
+        if (res.status == SENDING){
+            while((n = Rio_readn(clientfd, buffer, sizeof(buffer)))>0) {
+                printf("%d octets ont été lu\n",n);
+                Rio_writen(fd, buffer, n);
+                i++;
+                printf("%d paquet envoyé\n",i);
+            }
+        }    
 		printf("fin du transfert\n");
     }
 
