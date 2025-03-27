@@ -5,6 +5,13 @@
 #include "types.h"
 #include "csapp.h"
 
+int parse_request(const char *str) {
+    if (strcmp(str, "get") == 0) return GET;
+    if (strcmp(str, "put") == 0) return PUT;
+    if (strcmp(str, "ls") == 0) return LS;
+    return -1;
+}
+
 int main(int argc, char **argv)
 {
     int clientfd, port;
@@ -14,8 +21,8 @@ int main(int argc, char **argv)
     char buffer [4096];
     int n;
 
-    if (argc != 2) {
-        fprintf(stderr, "usage: <fichier> %s\n", argv[0]);
+    if (argc != 1) {
+        fprintf(stderr, "usage: %s\n", argv[0]);
         exit(1);
     }
 	
@@ -40,9 +47,13 @@ int main(int argc, char **argv)
      */
     printf("client connected to server OS\n"); 
 
-	/*filling the request*/
-    strcpy(req.filename, argv[1]);
-    req.request = GET; /*on ne gère que ce type de requête so far*/
+	/*filling the request structure by reading a line*/
+	printf("ftp> ");
+	char input[10];
+	scanf("%s %s",input, &req.filename);
+	req.request = parse_request(input);
+
+    //req.request = GET; /*on ne gère que ce type de requête so far*/
 	
 	/* sending the type of the request : GET | PUT | LS to the server */
 	/*int bufreq=2;
