@@ -90,7 +90,7 @@ void traitementReq(int connfd){
 				fclose(f);
 				/*found on stackoverflow*/
 				buffer = malloc(sizefd*sizeof(char));
-				while((buff = Rio_readn(fd,buffer, sizeof(buffer)))>0){     //on check l'etat de read, si >0 on continue
+				while((buff = Rio_readn(fd,buffer, sizefd*sizeof(char)))>0){     //on check l'etat de read, si >0 on continue
 					printf("Transfert en cours, %zd octets lu\n", buff);
 					Rio_writen(connfd, buffer, buff);
 				}
