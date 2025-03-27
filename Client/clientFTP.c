@@ -1,24 +1,25 @@
 /*
  * echoclient.c - An echo client
  */
+ 
 #include "types.h"
 #include "csapp.h"
 
 int main(int argc, char **argv)
 {
     int clientfd, port;
-    char *host;
+    char host[10];
     request_t req;
     response_t res;
     char buffer [1024];
     ssize_t n;
 
-    if (argc != 3) {
-        fprintf(stderr, "usage: %s <host> <nomFich>\n", argv[0]);
-        exit(0);
+    if (argc != 2) {
+        fprintf(stderr, "usage: <fichier> %s\n", argv[0]);
+        exit(1);
     }
-
-    host = argv[1];
+	
+    strcpy(host, "localhost");
     port = 2121;
 
     /*
@@ -26,7 +27,7 @@ int main(int argc, char **argv)
      * If necessary, Open_clientfd will perform the name resolution
      * to obtain the IP address.
      */
-    if ((clientfd = Open_clientfd(host,port)) == -1)
+    if ((clientfd = Open_clientfd(host,port))<0)
 	{
 		perror("Open error\n");
 		exit(1);
@@ -40,7 +41,7 @@ int main(int argc, char **argv)
     printf("client connected to server OS\n"); 
 
 	/*filling the request*/
-    strcpy(req.filename, argv[2]);
+    strcpy(req.filename, argv[1]);
     req.request = GET; /*on ne gère que ce type de requête so far*/
 	
 	/* sending the type of the request : GET | PUT | LS to the server */
@@ -48,8 +49,8 @@ int main(int argc, char **argv)
 	bufreq = req.request;
     Write(clientfd, &bufreq, sizeof(req.request));*/
 
-    Write(clientfd, &(req.request), sizeof(req.request));
-    Write(clientfd, &(req.filename), sizeof(req.filename));
+    Rio_writen(clientfd, &(req.request), sizeof(req.request));
+    Rio_writen(clientfd, &(req.filename), sizeof(req.filename));
 	
 
 	/* fetching the response from the server */
@@ -61,15 +62,15 @@ int main(int argc, char **argv)
     }
     else if (res.status == FOUND){
         int fd = Open("import.txt", O_WRONLY | O_CREAT | O_TRUNC, 0644);
-        if (fd < 0) {
-            perror("Open");
+        if (fd<0) {
+            perror("Open error");
             exit(1);
         }
 		
 		printf("réception du fichier en cours ...\n");
-        while((n = Read(clientfd, buffer, sizeof(buffer))) > 0) {
+        while((n = Rio_readn(clientfd, buffer, sizeof(buffer)))>0) {
             printf("%zd octets ont été lu\n",n);
-            Write(fd, buffer, n);
+            Rio_writen(fd, buffer, n);
         }
 		printf("fin du transfert\n");
     }

@@ -1,8 +1,7 @@
 /*
  * echoserveri.c - An iterative echo server
  */
-
-
+#include <stdio.h>
 #include "csapp.h"
 #include "types.h"
 
@@ -26,7 +25,6 @@ void handler1(int sig) {
     while((pid = waitpid(-1, NULL, WNOHANG)) > 0){
         printf("Handler reaped child %d\n", (int)pid);
     }
-
     return;
 }
 
@@ -51,17 +49,16 @@ void traitementReq(int connfd){
     response_t res;
     ssize_t n;
     int fd;
-    char buffer[1024];
+    char *buffer; /*size will determined later*/
     ssize_t buff;
 	
 	/*filling the request structure*/
-    if ((n = Read(connfd, &(req.request), sizeof(req.request)))==-1){
+    if ((n = Rio_readn(connfd, &(req.request), sizeof(req.request)))<0){
 		perror("Read error\n");
 		exit(1);
 	}
 	
-	 
-    if ((n = Read(connfd, &(req.filename), sizeof(req.filename)))==-1){
+    if ((n = Rio_readn(connfd, &(req.filename), sizeof(req.filename)))<0){
 		perror("Read error\n");
 		exit(1);
 	}
@@ -72,23 +69,33 @@ void traitementReq(int connfd){
 		case GET:
 			printf("Requête de type GET pour le fichier %s\n",req.filename);
 
-			if ((fd = Open(req.filename, O_RDONLY, 0444)) == -1){
+			if ((fd = Open(req.filename, O_RDONLY, 0444))<0){
 				perror("fichier introuvable");
 				res.status = 404;
-				Write(connfd, &(res.status), sizeof(res.status));    //envoi de l'erreur au client
+				Rio_writen(connfd, &(res.status), sizeof(res.status));    //envoi de l'erreur au client
 			}
 
 			else 
 			/*the file exists, so we proceed to the transfer*/
 			{
 				res.status = 200;
-				Write(connfd, &(res.status), sizeof(res.status));    //envoi de l'erreur au client
+				Rio_writen(connfd, &(res.status), sizeof(res.status));    //envoi de l'erreur au client
 				printf("Début du transfert du fichier %s...\n", req.filename);
-				while((buff = Read(fd,buffer, sizeof(buffer)))>0){     //on check l'etat de read, si >0 on continue
+
+				/*we want to charge the buffer in a row*/
+				FILE *f = fopen(req.filename, "r");
+				fseek(f, 0, SEEK_END); // seek to end of file
+				int sizefd = ftell(f); // get current file pointer
+				fseek(f, 0, SEEK_SET); // seek back to beginning of file
+				fclose(f);
+				/*found on stackoverflow*/
+				buffer = malloc(sizefd*sizeof(char));
+				while((buff = Rio_readn(fd,buffer, sizeof(buffer)))>0){     //on check l'etat de read, si >0 on continue
 					printf("Transfert en cours, %zd octets lu\n", buff);
-					Write(connfd, buffer, sizeof(buffer));
+					Rio_writen(connfd, buffer, buff);
 				}
 				printf("Ficher transfere avec succès\n");
+				free(buffer);
 			}
 			close(fd);
 			break;
