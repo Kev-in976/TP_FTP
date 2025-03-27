@@ -1,7 +1,8 @@
 typedef enum {
     GET,
     PUT,
-    LS
+    LS,
+	BYE
 } typereq_t;
 
 
@@ -18,4 +19,5 @@ typedef enum {
 
 typedef struct response_t{
     status_t status;
+	int filesize;
 }response_t;

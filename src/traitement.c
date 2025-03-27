@@ -1,17 +1,30 @@
-void traitementReq(int connfd){
+#include "types.h"
+#include "csapp.h"
+#include <stdlib.h>
+
+#define BUFFER_SIZE 4096
+
+void traitement(int connfd){
     request_t req;
     response_t res;
     ssize_t n;
     int fd;
-    char buffer [4096]; /*size will determined later*/
-    ssize_t buff;
-	
+    char buffer [BUFFER_SIZE];
+
+while(1) {	
 	/*filling the request structure*/
     if ((n = Rio_readn(connfd, &(req.request), sizeof(req.request)))<0){
 		perror("Read error\n");
 		exit(1);
 	}
 	
+	if (req.request == BYE)
+	{
+		printf("server : fermeture de la socket\n");
+		Close(connfd);
+		exit(0);
+	}
+
     if ((n = Rio_readn(connfd, &(req.filename), sizeof(req.filename)))<0){
 		perror("Read error\n");
 		exit(1);
@@ -24,43 +37,58 @@ void traitementReq(int connfd){
 	/*request managing*/
 	switch (req.request){
 		case GET:
-			printf("Requête de type GET pour le fichier %s\n",req.filename);
+			printf("traitement : Requête de type GET pour le fichier %s\n",req.filename);
 
 			if ((fd = Open(pathserver, O_RDONLY, 0444))<0){
 				perror("fichier introuvable");
 				res.status = 404;
-				Rio_writen(connfd, &(res.status), sizeof(res.status));    //envoi de l'erreur au client
+				Rio_writen(connfd, &(res.status), sizeof(res.status));    //envoi du statut d'erreur au client
 			}
 
 			else 
 			/*the file exists, so we proceed to the transfer*/
 			{
 				res.status = 200;
-				Rio_writen(connfd, &(res.status), sizeof(res.status));    //envoi de l'erreur au client
-				printf("Début du transfert du fichier %s...\n", req.filename);
+				Rio_writen(connfd, &(res.status), sizeof(res.status));    //envoi ddu statut au client
 
-				/*we want to charge the buffer in a row*/
+				/*we want to fetch the size of the file*/
 				FILE *f = fopen(pathserver, "r");
 				fseek(f, 0, SEEK_END); // seek to end of file
 				int sizefd = ftell(f); // get current file pointer
 				fseek(f, 0, SEEK_SET); // seek back to beginning of file
 				fclose(f);
-                int nb =1;
+
+				//req.filesize = sizefd:
+                /*int nb =1;
                 printf("size = %d\n",sizefd);
 				if (sizefd > sizeof(buffer)){
                     nb = (sizefd/sizeof(buffer)) + 1;
-                }
-                res.status = 100;
+                }*/
+                res.status = SENDING;
+				res.filesize = sizefd;
                 Rio_writen(connfd, &(res.status), sizeof(res.status));
+                Rio_writen(connfd, &(res.filesize), sizeof(res.filesize));
+				printf("traitement : envoi du fichier %s en cours...\n", req.filename);
+				int paquets = 0;
+				int remaining = res.filesize;
+				while (BUFFER_SIZE-remaining < 0){
+					if ((n = Rio_readn(fd, buffer, BUFFER_SIZE))>0){
+						Rio_writen(connfd, buffer, n);
+                        paquets++;
+                        remaining = remaining - n;
+                        printf("traitement : paquet (%d) envoyé de taille (%zd), %d octets restants\n",paquets,n,remaining);
+					}
+               }
+                    if ((n = Rio_readn(fd, buffer, remaining))>0) {
+                        Rio_writen(connfd, buffer, n);
+                        paquets++;
+                        remaining = remaining - n;
+                        printf("traitement : paquet (%d) envoyé de taille (%zd), %d octets restants\n",paquets,n,remaining);
 
-                printf("le fichier sera envoyé en %d paquets\n",nb);
-				while((buff = Rio_readn(fd,buffer, sizeof(buffer)))>0){     //on check l'etat de read, si >0 on continue
-					printf("Transfert en cours, %zd octets lu\n", buff);
-					Rio_writen(connfd, buffer, buff);
 				}
-				printf("Ficher transfere avec succès\n");
+				printf("traitement : File transfered\n");
+				close(fd);
 			}
-			close(fd);
 			break;
 
 		case PUT:
@@ -70,9 +98,16 @@ void traitementReq(int connfd){
 		case LS:
 			printf("Requête de type LS pour le fichier %s",req.filename);
 			break;
-		
+		case BYE:
+			printf("Fermeture de la socket\n");
+			exit(0);
 		default:
 			fprintf(stderr,"requete non reconnu\n");
 			break;
 	}
+	/*end of the switch*/
+	printf("\n");
+
+	}
+	/*end of the loop (which is never reached)*/
 }    
