@@ -13,7 +13,7 @@ int type_request(const char *str) {
     if (strcmp(str, "put") == 0) return PUT;
     if (strcmp(str, "ls") == 0) return LS;
     if (strcmp(str, "bye") == 0) return BYE;
-    return -1;
+	else printf("client : requête inconnue\n"); return UNKNOWN;
 }
 
 /*INUTILE POUR l'INSTANT A VOIR SI CA SERT PLUS TARD*/
@@ -86,6 +86,7 @@ int main(int argc, char **argv)
      */
     printf("client : Client connected to server OS\n"); 
 	printf("\n");
+
 /*debut de la conversation avec le serveur*/
 while(1) {
     request_t req;
@@ -99,6 +100,7 @@ while(1) {
 	fgets(input, 266, stdin);
 	char typereq[10];
 	sscanf(input, "%s %s",typereq, &(req.filename));
+
 	req.request = type_request(typereq);
 
 	/*traiter le cas du 'bye' a part*/
@@ -110,11 +112,10 @@ while(1) {
 	}
 
 	/* sending the type of the request : GET | PUT | LS and the filename to the server */
-    Rio_writen(clientfd, &(req.request), sizeof(req.request));
-    Rio_writen(clientfd, &(req.filename), sizeof(req.filename));
+    Rio_writen(clientfd, &(req), sizeof(req));
 	
 	/* fetching the response from the server */
-    Read(clientfd, &res.status, sizeof(res.status));
+    Read(clientfd, &res, sizeof(res));
 
 	/*status manager*/
     if (res.status == NOT_FOUND){
@@ -131,8 +132,7 @@ while(1) {
         }
 		
 		/*reading the file on the tube*/
-        Read(clientfd, &res.status, sizeof(res.status));
-		Read(clientfd, &res.filesize, sizeof(res.filesize));
+        Read(clientfd, &res, sizeof(res));
 		printf("client : réception du fichier %s en cours de taille %d ...\n", req.filename, res.filesize);
 		int remaining = res.filesize;
         int paquets = 0;

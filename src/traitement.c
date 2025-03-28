@@ -6,6 +6,8 @@
 
 void traitement(int connfd){
 
+char pathserver[100] = "./Server/";
+
 while(1) {	
     request_t req;
     response_t res;
@@ -14,7 +16,7 @@ while(1) {
     char buffer [BUFFER_SIZE];
 
 	/*filling the request structure*/
-    if ((n = Rio_readn(connfd, &(req.request), sizeof(req.request)))<0){
+    if ((n = Rio_readn(connfd, &req, sizeof(req)))<0){
 		perror("Read error\n");
 		exit(1);
 	}
@@ -26,22 +28,15 @@ while(1) {
 		exit(0);
 	}
 
-    if ((n = Rio_readn(connfd, &(req.filename), sizeof(req.filename)))<0){
-		perror("Read error\n");
-		exit(1);
-	}
 	
 	/*filename formatting*/
-	char pathserver[100] = "./Server/";
 	strcat(pathserver, req.filename);
 	
 	/*request managing*/
 	switch (req.request){
 		case GET:
 			printf("traitement : Requête de type GET pour le fichier %s\n",req.filename);
-
 			if ((fd = Open(pathserver, O_RDONLY, 0444))<0){
-
 				printf("traitement : fichier introuvable\n");
 				res.status = 404;
 				Rio_writen(connfd, &(res.status), sizeof(res.status));    //envoi du statut d'erreur au client
@@ -51,7 +46,7 @@ while(1) {
 			{
 				/*envoi du statut au client*/
 				res.status = FOUND;
-				Rio_writen(connfd, &(res.status), sizeof(res.status));
+				Rio_writen(connfd, &(res), sizeof(res));
 
 				/*we want to fetch the size of the file*/
 				FILE *f = fopen(pathserver, "r");
@@ -63,8 +58,7 @@ while(1) {
 				/*envoi du statut et de la taille au client*/
                 res.status = SENDING;
 				res.filesize = sizefd;
-                Rio_writen(connfd, &(res.status), sizeof(res.status));
-                Rio_writen(connfd, &(res.filesize), sizeof(res.filesize));
+                Rio_writen(connfd, &(res), sizeof(res));
 				
 				/*envoi du fichier par morceaux*/
 				printf("traitement : envoi du fichier %s de taille %d en cours...\n", req.filename, res.filesize);
