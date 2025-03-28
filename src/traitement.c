@@ -6,14 +6,14 @@
 
 void traitement(int connfd){
 
-char pathserver[100] = "./Server/";
+//char pathserver[100] = "./Server/";
 
 while(1) {	
-    request_t req;
-    response_t res;
-    ssize_t n;
-    int fd;
-    char buffer [BUFFER_SIZE];
+    request_t req = {0};
+    response_t res = {0};
+    ssize_t n = 0;
+    int fd = -1;
+    char buffer [BUFFER_SIZE] = {0};
 
 	/*filling the request structure*/
     if ((n = Rio_readn(connfd, &req, sizeof(req)))<0){
@@ -30,13 +30,15 @@ while(1) {
 
 	
 	/*filename formatting*/
-	strcat(pathserver, req.filename);
-	
+	char filepath[256];
+	snprintf(filepath, sizeof(filepath), "./Server/%s", req.filename);	
+	printf("filepath : [%s]\n", filepath); 
+
 	/*request managing*/
 	switch (req.request){
 		case GET:
 			printf("traitement : Requête de type GET pour le fichier %s\n",req.filename);
-			if ((fd = Open(pathserver, O_RDONLY, 0444))<0){
+			if ((fd = open(filepath, O_RDONLY, 0444))<0){
 				printf("traitement : fichier introuvable\n");
 				res.status = 404;
 				Rio_writen(connfd, &(res.status), sizeof(res.status));    //envoi du statut d'erreur au client
@@ -49,7 +51,7 @@ while(1) {
 				Rio_writen(connfd, &(res), sizeof(res));
 
 				/*we want to fetch the size of the file*/
-				FILE *f = fopen(pathserver, "r");
+				FILE *f = fopen(filepath, "r");
 				fseek(f, 0, SEEK_END); // seek to end of file
 				int sizefd = ftell(f); // get current file pointer
 				fseek(f, 0, SEEK_SET); // seek back to beginning of file

@@ -58,7 +58,7 @@ int main(int argc, char **argv)
 {
     int clientfd, port;
     char host[10];
-	char pathclient[100] = "./Client/";
+	//char pathclient[100] = "./Client/";
 
     if (argc != 1) {
         fprintf(stderr, "usage: %s\n", argv[0]);
@@ -89,18 +89,18 @@ int main(int argc, char **argv)
 
 /*debut de la conversation avec le serveur*/
 while(1) {
-    request_t req;
-    response_t res;
-    char buffer [BUFFER_SIZE];
-    int n;
+    request_t req = {0};
+    response_t res = {0};
+    char buffer [BUFFER_SIZE] = {0};
+    int n = 0;
 
 	/*filling the request structure by reading a line*/
 	printf("ftp> ");
-	char input[266];
+	char input[266] = {0};
 	fgets(input, 266, stdin);
-	char typereq[10];
+	char typereq[10] = {0};
 	sscanf(input, "%s %s",typereq, &(req.filename));
-
+	printf("filename .%s.\n", req.filename);
 	req.request = type_request(typereq);
 
 	/*traiter le cas du 'bye' a part*/
@@ -111,6 +111,12 @@ while(1) {
 		exit(0);
 	}
 
+	if (req.request == UNKNOWN) continue;
+	
+	if (strlen(req.filename) == 0) {
+		printf("client : entrez un fichier\n");
+		continue;
+	}
 	/* sending the type of the request : GET | PUT | LS and the filename to the server */
     Rio_writen(clientfd, &(req), sizeof(req));
 	
@@ -119,13 +125,14 @@ while(1) {
 
 	/*status manager*/
     if (res.status == NOT_FOUND){
-        printf("client : erreur 404, fichier introuvable");
+        printf("client : erreur 404, fichier introuvable\n");
     }
     else if (res.status == FOUND){
 		printf("client : le fichier requêté existe\n");
+		char filepath[256];
+		snprintf(filepath, sizeof(filepath), "./Client/%s", req.filename);
 
- 		strcat(pathclient, req.filename);
-        int fd = Open(pathclient, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+        int fd = Open(filepath, O_WRONLY | O_CREAT | O_TRUNC, 0644);
         if (fd<0) {
             perror("client : Open error");
             exit(1);
