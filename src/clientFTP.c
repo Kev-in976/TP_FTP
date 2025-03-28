@@ -7,13 +7,50 @@
 
 #define BUFFER_SIZE 4096
 
-int parse_request(const char *str) {
+int type_request(const char *str) {
     if (strcmp(str, "get") == 0) return GET;
     if (strcmp(str, "put") == 0) return PUT;
     if (strcmp(str, "ls") == 0) return LS;
     if (strcmp(str, "bye") == 0) return BYE;
     return -1;
 }
+
+request_t parse_request(char *str) {
+	str[strcspn(str, "\n")] = '\0';
+	request_t *request = malloc(sizeof(request_t));
+	char req[10];
+	char file[256];
+	int which = 0;
+	char c;
+	int i=0;
+	int j = 0;
+	while((str[i] != '\0')){ /*end of the string*/
+		switch(c = str[i]){
+			case ' ':
+			req[i] = '\0';
+			which = 1;
+
+			default: /*it is a char*/
+			if (which == 1) { /*parsing the filename*/
+				printf("file[%d] = [%c]\n", j, c);
+				file[j] = c;
+				j++;
+			} else { /*parsing the request type*/
+				req[i] = c;
+			}
+		} /*switch end*/
+		i++;
+	} /*end while*/
+	file[j] = '\0';
+	request->request = type_request(req);
+	strcpy(request->filename, file);
+	printf("parse : str = [%s]\n", str);
+	printf("parse : file = [%s]\n", file);
+	printf("parse : request = [%s]\n", req);
+	return *request;
+}
+
+
 
 /*int parse_input(char str){
 	char req[3];
@@ -33,10 +70,6 @@ int main(int argc, char **argv)
 {
     int clientfd, port;
     char host[10];
-    request_t req;
-    response_t res;
-    char buffer [BUFFER_SIZE];
-    int n;
 
     if (argc != 1) {
         fprintf(stderr, "usage: %s\n", argv[0]);
@@ -65,12 +98,19 @@ int main(int argc, char **argv)
     printf("client : Client connected to server OS\n"); 
 
 while(1) {
+    request_t req;
+    response_t res;
+    char buffer [BUFFER_SIZE];
+    int n;
 
 	/*filling the request structure by reading a line*/
 	printf("ftp> ");
-	char input[10];
-	scanf("%s %255s", input, &req.filename); 
-	req.request = parse_request(input);
+	char input[266];
+	fgets(input, 266, stdin);
+	char typereq[10];
+	sscanf(input, "%s %s",typereq, &(req.filename));
+	req.request = type_request(typereq);
+	//req = parse_request(input);	
 	if (req.request == BYE) {
     	Rio_writen(clientfd, &(req.request), sizeof(req.request)); //envoi du 'bye' au serveur
 		printf("client : fermeture de la socket\n");

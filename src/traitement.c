@@ -5,13 +5,13 @@
 #define BUFFER_SIZE 4096
 
 void traitement(int connfd){
+while(1) {	
     request_t req;
     response_t res;
     ssize_t n;
     int fd;
     char buffer [BUFFER_SIZE];
 
-while(1) {	
 	/*filling the request structure*/
     if ((n = Rio_readn(connfd, &(req.request), sizeof(req.request)))<0){
 		perror("Read error\n");
