@@ -1,5 +1,5 @@
 /*
- * echoserveri.c - An iterative echo server
+ * a pool server
  */
 #include <stdio.h>
 #include <string.h>
@@ -66,13 +66,11 @@ void child_work(int listenfd, socklen_t clientlen, struct sockaddr_in clientaddr
                client_ip_string);
 
 		/*on traite la requete avec le traitement adapté*/
-//		while(1) 
-//		{
-			traitement(connfd);
-
- //      }
-		/*connexion terminée, attente d'une nouvelle connexion*/
-        Close(connfd);
+		traitement(connfd);
+		printf("serveur : la\n");
+        
+		/*le client a fermé la connexion*/
+		Close(connfd);
     }
 }
 

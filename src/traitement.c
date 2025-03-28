@@ -5,6 +5,7 @@
 #define BUFFER_SIZE 4096
 
 void traitement(int connfd){
+
 while(1) {	
     request_t req;
     response_t res;
@@ -20,7 +21,7 @@ while(1) {
 	
 	if (req.request == BYE)
 	{
-		printf("server : fermeture de la socket\n");
+		printf("traitement : fermeture de la socket par le client\n");
 		Close(connfd);
 		exit(0);
 	}
@@ -40,16 +41,17 @@ while(1) {
 			printf("traitement : Requête de type GET pour le fichier %s\n",req.filename);
 
 			if ((fd = Open(pathserver, O_RDONLY, 0444))<0){
-				perror("fichier introuvable");
+
+				printf("traitement : fichier introuvable\n");
 				res.status = 404;
 				Rio_writen(connfd, &(res.status), sizeof(res.status));    //envoi du statut d'erreur au client
 			}
-
 			else 
 			/*the file exists, so we proceed to the transfer*/
 			{
-				res.status = 200;
-				Rio_writen(connfd, &(res.status), sizeof(res.status));    //envoi ddu statut au client
+				/*envoi du statut au client*/
+				res.status = FOUND;
+				Rio_writen(connfd, &(res.status), sizeof(res.status));
 
 				/*we want to fetch the size of the file*/
 				FILE *f = fopen(pathserver, "r");
@@ -57,20 +59,18 @@ while(1) {
 				int sizefd = ftell(f); // get current file pointer
 				fseek(f, 0, SEEK_SET); // seek back to beginning of file
 				fclose(f);
-
-				//req.filesize = sizefd:
-                /*int nb =1;
-                printf("size = %d\n",sizefd);
-				if (sizefd > sizeof(buffer)){
-                    nb = (sizefd/sizeof(buffer)) + 1;
-                }*/
+				
+				/*envoi du statut et de la taille au client*/
                 res.status = SENDING;
 				res.filesize = sizefd;
                 Rio_writen(connfd, &(res.status), sizeof(res.status));
                 Rio_writen(connfd, &(res.filesize), sizeof(res.filesize));
-				printf("traitement : envoi du fichier %s en cours...\n", req.filename);
+				
+				/*envoi du fichier par morceaux*/
+				printf("traitement : envoi du fichier %s de taille %d en cours...\n", req.filename, res.filesize);
 				int paquets = 0;
 				int remaining = res.filesize;
+
 				while (BUFFER_SIZE-remaining < 0){
 					if ((n = Rio_readn(fd, buffer, BUFFER_SIZE))>0){
 						Rio_writen(connfd, buffer, n);
@@ -78,7 +78,7 @@ while(1) {
                         remaining = remaining - n;
                         printf("traitement : paquet (%d) envoyé de taille (%zd), %d octets restants\n",paquets,n,remaining);
 					}
-               }
+               	}
                     if ((n = Rio_readn(fd, buffer, remaining))>0) {
                         Rio_writen(connfd, buffer, n);
                         paquets++;
@@ -86,9 +86,9 @@ while(1) {
                         printf("traitement : paquet (%d) envoyé de taille (%zd), %d octets restants\n",paquets,n,remaining);
 
 				}
-				printf("traitement : File transfered\n");
+				printf("traitement : file transfered\n");
 				close(fd);
-			}
+				}
 			break;
 
 		case PUT:
@@ -98,15 +98,12 @@ while(1) {
 		case LS:
 			printf("Requête de type LS pour le fichier %s",req.filename);
 			break;
-		case BYE:
-			printf("Fermeture de la socket\n");
-			exit(0);
+
 		default:
 			fprintf(stderr,"requete non reconnu\n");
 			break;
 	}
 	/*end of the switch*/
-	printf("\n");
 
 	}
 	/*end of the loop (which is never reached)*/

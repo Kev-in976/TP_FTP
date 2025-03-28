@@ -7,6 +7,7 @@
 
 #define BUFFER_SIZE 4096
 
+/*convertit le type de la requetes 'get', 'put', 'ls' en type enuméré*/
 int type_request(const char *str) {
     if (strcmp(str, "get") == 0) return GET;
     if (strcmp(str, "put") == 0) return PUT;
@@ -15,6 +16,7 @@ int type_request(const char *str) {
     return -1;
 }
 
+/*INUTILE POUR l'INSTANT A VOIR SI CA SERT PLUS TARD*/
 request_t parse_request(char *str) {
 	str[strcspn(str, "\n")] = '\0';
 	request_t *request = malloc(sizeof(request_t));
@@ -49,27 +51,14 @@ request_t parse_request(char *str) {
 	printf("parse : request = [%s]\n", req);
 	return *request;
 }
+/*INUTILE POUR l'INSTANT A VOIR SI CA SERT PLUS TARD*/
 
-
-
-/*int parse_input(char str){
-	char req[3];
-	char filename[256];
-	int i=0;
-	int which = 0;
-	while (str[i]!='/0'){
-		if (str[i] == ' '){
-			which = 1;
-		}
-		else {
-			if (which == 0) req = str[i]
-
-*/
 
 int main(int argc, char **argv)
 {
     int clientfd, port;
     char host[10];
+	char pathclient[100] = "./Client/";
 
     if (argc != 1) {
         fprintf(stderr, "usage: %s\n", argv[0]);
@@ -96,7 +85,8 @@ int main(int argc, char **argv)
      * has not yet called "Accept" for this connection
      */
     printf("client : Client connected to server OS\n"); 
-
+	printf("\n");
+/*debut de la conversation avec le serveur*/
 while(1) {
     request_t req;
     response_t res;
@@ -110,7 +100,8 @@ while(1) {
 	char typereq[10];
 	sscanf(input, "%s %s",typereq, &(req.filename));
 	req.request = type_request(typereq);
-	//req = parse_request(input);	
+
+	/*traiter le cas du 'bye' a part*/
 	if (req.request == BYE) {
     	Rio_writen(clientfd, &(req.request), sizeof(req.request)); //envoi du 'bye' au serveur
 		printf("client : fermeture de la socket\n");
@@ -118,19 +109,20 @@ while(1) {
 		exit(0);
 	}
 
-	/* sending the type of the request : GET | PUT | LS to the server */
+	/* sending the type of the request : GET | PUT | LS and the filename to the server */
     Rio_writen(clientfd, &(req.request), sizeof(req.request));
     Rio_writen(clientfd, &(req.filename), sizeof(req.filename));
 	
 	/* fetching the response from the server */
     Read(clientfd, &res.status, sizeof(res.status));
 
-	/*status manage*/
+	/*status manager*/
     if (res.status == NOT_FOUND){
         printf("client : erreur 404, fichier introuvable");
     }
     else if (res.status == FOUND){
-		char pathclient[100] = "./Client/";
+		printf("client : le fichier requêté existe\n");
+
  		strcat(pathclient, req.filename);
         int fd = Open(pathclient, O_WRONLY | O_CREAT | O_TRUNC, 0644);
         if (fd<0) {
@@ -138,12 +130,14 @@ while(1) {
             exit(1);
         }
 		
-		printf("client : réception du fichier en cours ...\n");
+		/*reading the file on the tube*/
         Read(clientfd, &res.status, sizeof(res.status));
 		Read(clientfd, &res.filesize, sizeof(res.filesize));
+		printf("client : réception du fichier %s en cours de taille %d ...\n", req.filename, res.filesize);
 		int remaining = res.filesize;
         int paquets = 0;
-        if (res.status == SENDING){
+        
+		if (res.status == SENDING){
 			while (BUFFER_SIZE-remaining < 0){ 
             	if ((n = Rio_readn(clientfd, buffer, BUFFER_SIZE))>0) {
 					Rio_writen(fd, buffer, n);
