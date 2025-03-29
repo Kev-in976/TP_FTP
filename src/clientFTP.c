@@ -4,8 +4,41 @@
  
 #include "types.h"
 #include "csapp.h"
+#include "log.h"
+#include "utils.h"
 
 #define BUFFER_SIZE 4096
+int global_clientfd;
+log_t global_log;
+
+log_t fill_log(request_t req, response_t res){
+	log_t log;
+	log.request = req.request;
+	strcpy(log.filename, req.filename);
+	log.filesize = res.filesize;
+	return log;
+}	
+
+
+void handler_iencli(int sig) {
+	printf("Déconnexion brusque du client\n");
+	FILE * log;
+	if ((log = fopen(".log", "w"))<0){
+		printf("client : cannot save current data file\n");
+		exit(1);
+	}
+
+	fprintf(log, "%d\n", global_log.request);
+	fprintf(log, "%s\n", global_log.filename);
+	fprintf(log, "%d\n", global_log.filesize);
+	fprintf(log, "%d\n", global_log.paquets_recus);
+
+	fclose(log);
+
+	sleep(1);
+	close(global_clientfd);
+    exit(0);
+}
 
 /*convertit le type de la requetes 'get', 'put', 'ls' en type enuméré*/
 int type_request(const char *str) {
@@ -16,47 +49,48 @@ int type_request(const char *str) {
 	else printf("client : requête inconnue\n"); return UNKNOWN;
 }
 
-/*INUTILE POUR l'INSTANT A VOIR SI CA SERT PLUS TARD*/
-request_t parse_request(char *str) {
-	str[strcspn(str, "\n")] = '\0';
-	request_t *request = malloc(sizeof(request_t));
-	char req[10];
-	char file[256];
-	int which = 0;
-	char c;
-	int i=0;
-	int j = 0;
-	while((str[i] != '\0')){ /*end of the string*/
-		switch(c = str[i]){
-			case ' ':
-			req[i] = '\0';
-			which = 1;
-
-			default: /*it is a char*/
-			if (which == 1) { /*parsing the filename*/
-				printf("file[%d] = [%c]\n", j, c);
-				file[j] = c;
-				j++;
-			} else { /*parsing the request type*/
-				req[i] = c;
-			}
-		} /*switch end*/
-		i++;
-	} /*end while*/
-	file[j] = '\0';
-	request->request = type_request(req);
-	strcpy(request->filename, file);
-	printf("parse : str = [%s]\n", str);
-	printf("parse : file = [%s]\n", file);
-	printf("parse : request = [%s]\n", req);
-	return *request;
+void isbyecli(request_t req, int clientfd) {
+	if (req.request == BYE) {
+    	Rio_writen(clientfd, &(req.request), sizeof(req.request)); //envoi du 'bye' au serveur
+		printf("client : fermeture de la socket\n");
+		Close(clientfd);
+		exit(0);
+	}
 }
-/*INUTILE POUR l'INSTANT A VOIR SI CA SERT PLUS TARD*/
 
+void client2server(int fd, int clientfd, int remaining, int paquets, log_t log){
+	char buffer[BUFFER_SIZE];
+	ssize_t n;
+	while (BUFFER_SIZE-remaining < 0){
+		global_log = log;
+		if ((n = Rio_readn(clientfd, buffer, BUFFER_SIZE))>0) {
+			Rio_writen(fd, buffer, n);
+			paquets++;
+			remaining = remaining - n;
+			printf("client : paquet (%d) reçu de taille (%d), %d octets restants\n",paquets,n,remaining);
+			log.paquets_recus = paquets; 
+			/**/
+			printf("affcihage log\n");
+		fprintf(stdout, "%d\n", global_log.request);
+		fprintf(stdout, "%s\n", global_log.filename);
+		fprintf(stdout, "%d\n", global_log.filesize);
+		fprintf(stdout, "%d\n", global_log.paquets_recus);
+		sleep(1);
+		}
+	}
+		if ((n = Rio_readn(clientfd, buffer, remaining))>0) {
+			Rio_writen(fd, buffer, n);
+			paquets++;
+			remaining = remaining - n;
+			printf("client : paquet (%d) reçu de taille (%d), %d octets restants\n",paquets,n,remaining);
+		}
+}
 
 int main(int argc, char **argv)
 {
-    int clientfd, port;
+	Signal(SIGINT, handler_iencli);
+    int clientfd; 
+	int port;
     char host[10];
 	//char pathclient[100] = "./Client/";
 
@@ -79,6 +113,7 @@ int main(int argc, char **argv)
 		exit(1);
 	}
     
+	global_clientfd = clientfd;
     /*
      * At this stage, the connection is established between the client
      * and the server OS ... but it is possible that the server application
@@ -91,8 +126,24 @@ int main(int argc, char **argv)
 while(1) {
     request_t req = {0};
     response_t res = {0};
-    char buffer [BUFFER_SIZE] = {0};
-    int n = 0;
+	
+	if (existslog() == true) {
+		log_t log = readlog();
+		
+		int fd;
+		if ((fd = open(clipath(log.filename), O_WRONLY, 0444)) > 0) {
+			int deja_rempli = BUFFER_SIZE*log.paquets_recus;
+			int remaining = log.filesize - deja_rempli;
+			int paquets = log.paquets_recus;
+			printf("client : reprise du transfert\n");
+			lseek(fd, deja_rempli, SEEK_SET);
+        	client2server(fd, clientfd, remaining, paquets, log);
+			printf("client : transfert effectué\n");
+			remove("./.log");
+
+        }
+		continue;
+	}
 
 	/*filling the request structure by reading a line*/
 	printf("ftp> ");
@@ -100,23 +151,20 @@ while(1) {
 	fgets(input, 266, stdin);
 	char typereq[10] = {0};
 	sscanf(input, "%s %s",typereq, &(req.filename));
-	printf("filename .%s.\n", req.filename);
 	req.request = type_request(typereq);
 
 	/*traiter le cas du 'bye' a part*/
-	if (req.request == BYE) {
-    	Rio_writen(clientfd, &(req.request), sizeof(req.request)); //envoi du 'bye' au serveur
-		printf("client : fermeture de la socket\n");
-		Close(clientfd);
-		exit(0);
-	}
+	isbyecli(req, clientfd);
 
+	/*gestion des cas limites*/
 	if (req.request == UNKNOWN) continue;
 	
 	if (strlen(req.filename) == 0) {
 		printf("client : entrez un fichier\n");
 		continue;
 	}
+
+
 	/* sending the type of the request : GET | PUT | LS and the filename to the server */
     Rio_writen(clientfd, &(req), sizeof(req));
 	
@@ -129,10 +177,8 @@ while(1) {
     }
     else if (res.status == FOUND){
 		printf("client : le fichier requêté existe\n");
-		char filepath[256];
-		snprintf(filepath, sizeof(filepath), "./Client/%s", req.filename);
 
-        int fd = Open(filepath, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+        int fd = Open(clipath(req.filename), O_WRONLY | O_CREAT | O_TRUNC, 0644);
         if (fd<0) {
             perror("client : Open error");
             exit(1);
@@ -140,27 +186,14 @@ while(1) {
 		
 		/*reading the file on the tube*/
         Read(clientfd, &res, sizeof(res));
-		printf("client : réception du fichier %s en cours de taille %d ...\n", req.filename, res.filesize);
 		int remaining = res.filesize;
         int paquets = 0;
-        
+		log_t log = fill_log(req, res);
 		if (res.status == SENDING){
-			while (BUFFER_SIZE-remaining < 0){ 
-            	if ((n = Rio_readn(clientfd, buffer, BUFFER_SIZE))>0) {
-					Rio_writen(fd, buffer, n);
-					paquets++;
-					remaining = remaining - n;
-					printf("client : paquet (%d) reçu de taille (%d), %d octets restants\n",paquets,n,remaining);
-            	}
-			}
-            	if ((n = Rio_readn(clientfd, buffer, remaining))>0) {
-					Rio_writen(fd, buffer, n);
-					paquets++;
-					remaining = remaining - n;
-					printf("client : paquet (%d) reçu de taille (%d), %d octets restants\n",paquets,n,remaining);
-				}
+			printf("client : réception du fichier %s en cours de taille %d ...\n", req.filename, res.filesize);
+        	client2server(fd, clientfd, remaining, paquets, log);
+			printf("client : fin de la reception\n");
         }    
-		printf("client : fin de la reception\n");
 		printf("\n");
     }
 
