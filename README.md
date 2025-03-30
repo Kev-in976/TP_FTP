@@ -15,3 +15,6 @@ Question 6:
 Question 7: 
 
 Question 8: Pour cette étape nous tout simplement changer la taille du buffer qu'on utilisait de façon dynamique par une taille fixe, 4096 pour le moment. 
+
+
+Erreur interressante relevé : Lorsque que l'on lance clientFTP sur plusieurs terminal simultanément et qu'on intérromp brusquement le transfert sur un des clients alors la prochaine demande de n'importe quel client récuperera le reste du fichier qui avait été interrompu. Par contre si par malheur le client qui récupère le fichier n'est pas celui qui avait eu une interruption alors il est déconnecté à jamais mdrr.

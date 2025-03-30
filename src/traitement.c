@@ -153,7 +153,8 @@ while(1) {
 
 				printf("traitement : file transfered\n");
 				close(fd);
-				//res.status = 0;
+				res.status = 0;
+				printf("status %d\n",res.status);
 				}
 			break;
 

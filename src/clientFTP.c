@@ -26,7 +26,7 @@ log_t fill_log(request_t req, response_t res){
 void handler_iencli(int sig) {
 	printf("Déconnexion brusque du client\n");
 	printf("status %d\n",res.status);
-	if (res.status == 0){
+	if (res.status == 0 && !existslog()){
 		close(global_clientfd);
 		exit(0);
 	}
@@ -47,6 +47,7 @@ void handler_iencli(int sig) {
 	close(global_clientfd);
     exit(0);
 }
+
 
 /*convertit le type de la requetes 'get', 'put', 'ls' en type enuméré*/
 int type_request(const char *str) {
