@@ -6,10 +6,13 @@
 #include "csapp.h"
 #include "log.h"
 #include "utils.h"
+#include <time.h>
 
 #define BUFFER_SIZE 4096
 int global_clientfd;
 log_t global_log;
+response_t res = {0};
+
 
 log_t fill_log(request_t req, response_t res){
 	log_t log;
@@ -22,6 +25,11 @@ log_t fill_log(request_t req, response_t res){
 
 void handler_iencli(int sig) {
 	printf("Déconnexion brusque du client\n");
+	printf("status %d\n",res.status);
+	if (res.status == 0){
+		close(global_clientfd);
+		exit(0);
+	}
 	FILE * log;
 	if ((log = fopen(".log", "w"))<0){
 		printf("client : cannot save current data file\n");
@@ -70,12 +78,12 @@ void client2server(int fd, int clientfd, int remaining, int paquets, log_t log){
 			printf("client : paquet (%d) reçu de taille (%d), %d octets restants\n",paquets,n,remaining);
 			log.paquets_recus = paquets; 
 			/**/
-			printf("affcihage log\n");
+			printf("affichage log\n");
 		fprintf(stdout, "%d\n", global_log.request);
 		fprintf(stdout, "%s\n", global_log.filename);
 		fprintf(stdout, "%d\n", global_log.filesize);
 		fprintf(stdout, "%d\n", global_log.paquets_recus);
-		sleep(1);
+		usleep(500000);		//0.5 seconde
 		}
 	}
 		if ((n = Rio_readn(clientfd, buffer, remaining))>0) {
@@ -125,7 +133,9 @@ int main(int argc, char **argv)
 /*debut de la conversation avec le serveur*/
 while(1) {
     request_t req = {0};
-    response_t res = {0};
+    //response_t res = {0};
+	clock_t debut, fin;
+	double tempsEcoule, debit;
 	
 	if (existslog() == true) {
 		log_t log = readlog();
@@ -137,8 +147,13 @@ while(1) {
 			int paquets = log.paquets_recus;
 			printf("client : reprise du transfert\n");
 			lseek(fd, deja_rempli, SEEK_SET);
+			debut = clock();
         	client2server(fd, clientfd, remaining, paquets, log);
-			printf("client : transfert effectué\n");
+			fin = clock();
+			tempsEcoule = (double) (fin - debut)/CLOCKS_PER_SEC; // Pour avoir le temps en seconde
+			debit = (double) (remaining/1000) / tempsEcoule;
+			//printf("temps écoulé %.3f\n", temps);
+			printf("client : transfert effectué avec un debit de %.2f KBytes/s\n", debit);
 			remove("./.log");
 
         }
@@ -191,8 +206,12 @@ while(1) {
 		log_t log = fill_log(req, res);
 		if (res.status == SENDING){
 			printf("client : réception du fichier %s en cours de taille %d ...\n", req.filename, res.filesize);
+			debut = clock();
         	client2server(fd, clientfd, remaining, paquets, log);
-			printf("client : fin de la reception\n");
+			fin = clock();
+			tempsEcoule = (double) (fin - debut)/CLOCKS_PER_SEC; // Pour avoir le temps en seconde
+			debit = (double) (remaining/1000) / tempsEcoule;
+			printf("client : fin de la reception avec %.2f Kbytes/s de débit\n",debit);
         }    
 		printf("\n");
     }
@@ -200,6 +219,7 @@ while(1) {
 
 }
 /*end of the while*/
+Signal(SIGINT, handler_iencli);
 
 
 }
