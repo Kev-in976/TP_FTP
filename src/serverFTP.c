@@ -67,7 +67,6 @@ void child_work(int listenfd, socklen_t clientlen, struct sockaddr_in clientaddr
 
 		/*on traite la requete avec le traitement adapté*/
 		traitement(connfd);
-		printf("serveur : la\n");
         
 		/*le client a fermé la connexion*/
 		Close(connfd);
@@ -94,7 +93,6 @@ int main(int argc, char **argv)
             /*fils*/
             Signal(SIGINT, handlerFils);
             child_work(listenfd, clientlen, clientaddr);
-            printf("ici");
             exit(0);
         }
 

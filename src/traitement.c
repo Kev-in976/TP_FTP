@@ -16,13 +16,14 @@ request_t readreq(request_t req, int connfd) {
 	return req;
 }
 
-void isbyeserv(request_t req, int connfd) {
+bool isbyeserv(request_t req, int connfd) {
 	if (req.request == BYE)
 	{
 		printf("traitement : fermeture de la socket par le client\n");
-		Close(connfd);
-		exit(0);
-	}
+		return true;
+		//Close(connfd);
+		//exit(0);
+	} return false;
 }
 
 /*bool existslog() {
@@ -115,7 +116,9 @@ while(1) {
 
 	req = readreq(req, connfd);
 	
-	isbyeserv(req, connfd);
+	if ((isbyeserv(req, connfd)==true)){
+		break;
+	}
 	
 	
 
@@ -124,6 +127,7 @@ while(1) {
 		case GET:
 			printf("traitement : Requête de type GET pour le fichier %s\n",req.filename);
 			int fd;
+			printf("servpath = .%s.\n", servpath(req.filename));
 			if ((fd = open(servpath(req.filename), O_RDONLY, 0444))<0){
 				printf("traitement : fichier introuvable\n");
 				res.status = NOT_FOUND;
