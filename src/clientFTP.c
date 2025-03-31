@@ -113,11 +113,10 @@ int main(int argc, char **argv)
         fprintf(stderr, "usage: %s\n", argv[0]);
         exit(1);
     }
-
+	char wifi[] = "172.20.10.7";
 	char remote[] = "130.190.55.247";
 	char localhost[] = "localhost";
     strcpy(host, localhost);
-	printf("host .%s.\n", host);
     port = 2121;
 
     /*

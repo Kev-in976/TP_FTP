@@ -75,7 +75,10 @@ void child_work(int listenfd, socklen_t clientlen, struct sockaddr_in clientaddr
 
 int main(int argc, char **argv)
 {
-    int listenfd, port;
+    Signal(SIGINT, handlerPapa);
+    Signal(SIGINT, handlerFils);
+    
+	int listenfd, port;
     socklen_t clientlen;
     struct sockaddr_in clientaddr;
     /*if (argc != 2) {
@@ -91,14 +94,12 @@ int main(int argc, char **argv)
     for (int i = 0; i < NPROC; i++) {
         if ( (lesFils[i] = fork()) == 0) {
             /*fils*/
-            Signal(SIGINT, handlerFils);
             child_work(listenfd, clientlen, clientaddr);
             exit(0);
         }
 
     }
 
-    Signal(SIGINT, handlerPapa);
 
     while (1) {
         pause(); 
