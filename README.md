@@ -1,6 +1,15 @@
 # TP_FTP
 Mini projet SR d'un protocole de transfert de fichier, application client-serveur
 
+Pour compiler : se placer dans le répertoire courant et faire `make` .
+
+## Ce qui marche complètement
+
+* Etape I
+* Etape II
+
+Les autres étapes ne sont pas traitées.
+
 ## Structure du repo 
  ```
 .
@@ -31,4 +40,4 @@ Mini projet SR d'un protocole de transfert de fichier, application client-serveu
 
 ```
 
-Pour compiler : se placer dans le répertoire courant et faire `make` .
+
