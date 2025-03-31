@@ -22,6 +22,11 @@ log_t fill_log(request_t req, response_t res){
 	return log;
 }	
 
+void handler_pipe(int sig){
+	printf("deconnexion pipe/n");
+	close(global_clientfd);
+	exit(1);
+}
 
 void handler_iencli(int sig) {
 	printf("Déconnexion brusque du client\n");
@@ -98,17 +103,21 @@ void client2server(int fd, int clientfd, int remaining, int paquets, log_t log){
 int main(int argc, char **argv)
 {
 	Signal(SIGINT, handler_iencli);
+	Signal(SIGPIPE, handler_pipe);
     int clientfd; 
 	int port;
-    char host[10];
+    char host[20];
 	//char pathclient[100] = "./Client/";
 
     if (argc != 1) {
         fprintf(stderr, "usage: %s\n", argv[0]);
         exit(1);
     }
-	
-    strcpy(host, "localhost");
+
+	char remote[] = "130.190.55.247";
+	char localhost[] = "localhost";
+    strcpy(host, localhost);
+	printf("host .%s.\n", host);
     port = 2121;
 
     /*
@@ -185,7 +194,10 @@ while(1) {
     Rio_writen(clientfd, &(req), sizeof(req));
 	
 	/* fetching the response from the server */
-    Read(clientfd, &res, sizeof(res));
+    if (Rio_readn(clientfd, &res, sizeof(res))<1){
+		perror("read error\n");
+		exit(1);
+	}
 
 	/*status manager*/
     if (res.status == NOT_FOUND){
@@ -201,7 +213,10 @@ while(1) {
         }
 		
 		/*reading the file on the tube*/
-        Read(clientfd, &res, sizeof(res));
+        if (Rio_readn(clientfd, &res, sizeof(res))<1){
+			perror("read error\n");
+			exit(1);
+		}
 		int remaining = res.filesize;
         int paquets = 0;
 		log_t log = fill_log(req, res);
